@@ -7,6 +7,8 @@ import javax.persistence.OneToOne;
 
 import org.springframework.data.rest.core.annotation.RestResource;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import lombok.Data;
 
 @Entity
@@ -24,6 +26,8 @@ public class CustomerEntity {
 	
 	@Column
 	String telephone;
+	@Column @JsonIgnore
+	String secret;
 	
 	@OneToOne
 	CityEntity city;
