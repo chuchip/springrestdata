@@ -27,5 +27,4 @@ public class CustomerEntity {
 	
 	@OneToOne
 	CityEntity city;
-
 }
