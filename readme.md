@@ -1,3 +1,4 @@
+**http://www.profesor-p.com/2019/03/25/accediendo-facilmente-a-los-datos-con-spring-rest-data/** 
 **Spring Boot** ofrece un fantástico soporte para acceder a los datos con JPA a través de sus interfaces, del tipo [Repository](https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/Repository.html). Si a esto le añadimos la facilidad con que se crean servicios REST, como explicaba en la entrada [http://www.profesor-p.com/2018/10/11/aplicacion-crud-en-kotlin-con-springboot/]( http://www.profesor-p.com/2018/10/11/aplicacion-crud-en-kotlin-con-springboot/) podremos hacer una aplicación ofreciendo una API para acceder a nuestra base de datos preferida con muy poco código.
 
 Pero si queremos implementar [HATEOAS](https://spring.io/projects/spring-hateoas)  en nuestro proyecto p si hay muchos criterios sobre los que debemos acceder a los datos, deberemos escribir bastante código. Para solucionar este problema **Spring Boot** provee el paquete [Spring Data Rest](https://docs.spring.io/spring-data/rest/docs/current/reference/html/) con el cual con apenas código podremos crear una API para acceder a una tabla de nuestra base de datos.
@@ -12,7 +13,7 @@ Como siempre, podremos ir a la pagina  https://start.spring.io para crear nuestr
 
 
 
-![Creando el proyecto](.\starters.png)
+![Creando el proyecto](https://raw.githubusercontent.com/chuchip/springrestdata/master/starters.png)
 
 
 
@@ -44,7 +45,7 @@ Las demás líneas configuran la base de datos H2 que usaremos, así como cierta
 
 Nuestro proyecto final tendrá la siguiente estructura:
 
-![Estructura del proyecto](.\estructura.png)
+![Estructura del proyecto](https://raw.githubusercontent.com/chuchip/springrestdata/master/estructura.png)
 
 Como se puede ver, definiremos dos tablas (entities) ,  que son: **City** y **Customer**. También definimos los correspondientes repositorios **CustomerRepository** y **CityRepository**
 
@@ -154,7 +155,7 @@ Primero añadamos un registro. Esto lo realizaremos realizando una petición tip
 
 Podemos comprobar que ha realizado la inserción gracias a la consola de H2. Para ello iremos a la URL http://localhost:8080/h2/ y pulsaremos el botón **Connect**. Una vez conectados, si realizamos una *query* sobre la tabla CUSTOMER_ENTITY veremos la siguiente salida:
 
-![Consultando datos en tabla customer_entity](.\consola-h2-query.png)
+![Consultando datos en tabla customer_entity](https://raw.githubusercontent.com/chuchip/springrestdata/master/consola-h2-query.png)
 
 Observar que aunque hemos añadido el valor para el campo "**secret**"  este  no se ha guardado en la base de datos.
 
@@ -167,7 +168,7 @@ update customer_entity set city_id=1;
 
 
 
-![Consultando datos en tabla customer_entity](.\consola-h2.png)
+![Insertando  datos en tabla city_entity](https://raw.githubusercontent.com/chuchip/springrestdata/master/consola-h2.png)
 
 
 

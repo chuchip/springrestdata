@@ -1,0 +1,230 @@
+<!doctype html>
+<html>
+<head>
+<meta charset='UTF-8'><meta name='viewport' content='width=device-width initial-scale=1'>
+<title>readme</title></head>
+<body><p><strong>Spring Boot</strong> ofrece un fantástico soporte para acceder a los datos con JPA a través de sus interfaces, del tipo <a href='https://docs.spring.io/spring-data/commons/docs/current/api/org/springframework/data/repository/Repository.html'>Repository</a>. Si a esto le añadimos la facilidad con que se crean servicios REST, como explicaba en la entrada <a href='%20http://www.profesor-p.com/2018/10/11/aplicacion-crud-en-kotlin-con-springboot/'>http://www.profesor-p.com/2018/10/11/aplicacion-crud-en-kotlin-con-springboot/</a> podremos hacer una aplicación ofreciendo una API para acceder a nuestra base de datos preferida con muy poco código.</p>
+<p>Pero si queremos implementar <a href='https://spring.io/projects/spring-hateoas'>HATEOAS</a>  en nuestro proyecto p si hay muchos criterios sobre los que debemos acceder a los datos, deberemos escribir bastante código. Para solucionar este problema <strong>Spring Boot</strong> provee el paquete <a href='https://docs.spring.io/spring-data/rest/docs/current/reference/html/'>Spring Data Rest</a> con el cual con apenas código podremos crear una API para acceder a una tabla de nuestra base de datos.</p>
+<p>En el ejemplo que planteare en esta entrada veremos como poder realizar el mantenimiento de una tabla de clientes (customers)  sin escribir ni una sola línea para definir las diferentes APIS REST.</p>
+<h3>Creando el proyecto</h3>
+<p>Como siempre, podremos ir a la pagina  <a href='https://start.spring.io' target='_blank' class='url'>https://start.spring.io</a> para crear nuestro proyecto <strong>maven</strong>. Para el proyecto de ejemplo que vamos a crear, deberemos incluir las siguientes dependencias:</p>
+<p><strong>Spring Data Rest</strong>, <strong>H2</strong>, <strong>JPA</strong>, <strong>Lombok</strong> como se ve en la siguiente captura de pantalla</p>
+<p>&nbsp;</p>
+<p><img src='.\starters.png' alt='Creando el proyecto' referrerPolicy='no-referrer' /></p>
+<p>&nbsp;</p>
+<p>Una vez tengamos hayamos importado el proyecto en nuestro IDE preferido, deberemos modificar el fichero <strong>application.properties</strong> para definir ciertos parámetros:</p>
+<pre><code>#H2
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2
+#JPA
+spring.jpa.show-sql=true
+spring.jpa.hibernate.ddl-auto=create-drop
+# Datasource
+spring.datasource.url=jdbc:h2:file:~/test
+spring.datasource.username=sa
+spring.datasource.password=
+spring.datasource.driver-class-name=org.h2.Driver
+# Data Rest
+spring.data.rest.base-path: /api
+</code></pre>
+<p>De este fichero la única entrada relativa a la librería <strong>Data Rest</strong> es la última. En ella especificamos la dirección donde se deben implementar las llamadas <strong>REST</strong> para acceder a las diferentes tablas que implemente nuestra aplicación. Es decir, en nuestro caso, se accederá a través de la URL: <a href='http://localhost:8080/api' target='_blank' class='url'>http://localhost:8080/api</a></p>
+<p>Las demás líneas configuran la base de datos H2 que usaremos, así como ciertas propiedades de JPA. Por supuesto dejaremos a <strong>JPA</strong> que cree la estructura de la base de datos a traves de las entidades definidas, gracias a la sentencia: <code>spring.jpa.hibernate.ddl-auto=create-drop</code></p>
+<p>&nbsp;</p>
+<h3>Estructura del proyecto</h3>
+<p>Nuestro proyecto final tendrá la siguiente estructura:</p>
+<p><img src='.\estructura.png' alt='Estructura del proyecto' referrerPolicy='no-referrer' /></p>
+<p>Como se puede ver, definiremos dos tablas (entities) ,  que son: <strong>City</strong> y <strong>Customer</strong>. También definimos los correspondientes repositorios <strong>CustomerRepository</strong> y <strong>CityRepository</strong></p>
+<p>La clase <strong>CityEntity.java</strong> es la siguiente:</p>
+<pre><code class='language-java' lang='java'>@Entity
+@Data
+@RestResource(rel=&quot;customers&quot;, path=&quot;customer&quot;)
+public class CustomerEntity {	
+	@Id
+	long id;	
+	@Column
+	String name;	
+	@Column
+	String address;	
+	@Column
+	String telephone;	
+    @Column @JsonIgnore
+	String secret;
+	@OneToOne
+	CityEntity city;    
+}
+
+</code></pre>
+<p>Las particularidades de esta clase son las siguientes:</p>
+<ul>
+<li>la línea <strong>@RestResource</strong> donde con el parámetro <strong>rel</strong> especificamos como debe llamarse el objeto en la salida JSON. Con el parámetro <strong>path</strong> se indica donde se debe realizar la petición.</li>
+<li>La anotación <strong>@JsonIgnore</strong> aplicada a la columna <em>secret</em>.  Con esta etiqueta ese campo será ignorado, de tal manera que ni se mostrara en las salidas, ni se actualizara, aunque se incluya, en las peticiones.</li>
+
+</ul>
+<p>Si no pusiéramos la etiqueta <strong>@RestResource</strong> Spring presentaría el recurso para acceder a la entidad en <a href='http://localhost:8080/api/customerEntities' target='_blank' class='url'>http://localhost:8080/api/customerEntities</a> es decir usaría el nombre de la clase, poniéndolo en plural , por lo cual le añade &#39;<em>es&#39;</em>.</p>
+<p>El repositorio de esta entidad esta en <strong>CustomerRepository</strong> y contiene solo estas líneas:</p>
+<pre><code class='language-java' lang='java'>public interface CustomerRepository  extends CrudRepository&lt;CustomerEntity, Long&gt;  {	
+	public List&lt;CustomerEntity&gt; findByNameIgnoreCaseContaining(@Param(&quot;name&quot;) String name);
+}
+</code></pre>
+<p>La función <strong>findByNameIgnoreCaseContaining</strong> que he definido permitirá buscar los clientes, ignorando mayúsculas y minúsculas, cuyo nombre contengan la cadena mandada. Más adelante explicare como poder realizar una consulta a través de esta llamada con <strong>Spring Data Rest</strong></p>
+<p>Tenéis más documentación sobre como crear consultas personalizadas en Spring en <a href='http://www.profesor-p.com/2018/08/25/jpa-hibernate-en-spring/'>esta otra entrada mía</a>.</p>
+<p>La clase CityEntity.java contiene las siguientes líneas:</p>
+<pre><code class='language-java' lang='java'>@Entity
+@Data
+@RestResource(exported=false)
+public class CityEntity {		
+	@Id 
+	int id;
+	@Column
+	String name;
+	@Column
+	String province;
+}
+</code></pre>
+<p>En este caso la etiqueta <strong>@RestResource</strong> tiene indicada la propiedad <strong>exported</strong> igual a <em>false</em> . De esta manera esta entidad no será tratada por la <strong>Data Rest</strong> y no se implementara ninguna API para ella.</p>
+<h3>Accediendo al API de Data Rest</h3>
+<p>Los recursos que están publicados estarán disponibles en la URL: <a href='http://localhost:8080/api' target='_blank' class='url'>http://localhost:8080/api</a>, como hemos definido en el fichero <strong>application.properties</strong>. Esta será la salida en este proyecto:</p>
+<pre><code>&gt; curl -s http://localhost:8080/api/
+{
+  &quot;_links&quot; : {
+    &quot;customers&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer&quot;
+    },
+    &quot;profile&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/profile&quot;
+    }
+  }
+}
+</code></pre>
+<p>El  <em>profile</em> se refiere a lo definido en el <a href='https://tools.ietf.org/html/rfc6906'>RFC 6906</a>, donde se incluye detalles de la aplicación, pero no tratare de ello en esta entrada.</p>
+<p>Así para acceder al único recurso disponible en nuestro proyecto, al que hemos llamado <strong>customer</strong>, navegaremos a: <a href='http://localhost:8080/api/customer' target='_blank' class='url'>http://localhost:8080/api/customer</a> .</p>
+<p>Primero añadamos un registro. Esto lo realizaremos realizando una petición tipo <strong>POST</strong> como la siguiente:</p>
+<pre><code>&gt; curl -s --request POST localhost:8080/api/customer -d &#39;{&quot;id&quot;: 1, &quot;name&quot;:&quot;nombre cliente 1&quot;,&quot;address&quot;:&quot;direccion cliente 1&quot;,&quot;telephone&quot;:&quot;telefono cliente 1&quot;, &quot;secret&quot;: &quot;no guardar&quot;}&#39; -H &quot;Content-Type: application/json&quot;
+{
+  &quot;name&quot; : &quot;nombre cliente 1&quot;,
+  &quot;address&quot; : &quot;direccion cliente 1&quot;,
+  &quot;telephone&quot; : &quot;telefono cliente 1&quot;,
+  &quot;city&quot; : null,
+  &quot;_links&quot; : {
+    &quot;self&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+    },
+    &quot;customerEntity&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+    }
+  }
+
+</code></pre>
+<p>&nbsp;</p>
+<p>Podemos comprobar que ha realizado la inserción gracias a la consola de H2. Para ello iremos a la URL <a href='http://localhost:8080/h2/' target='_blank' class='url'>http://localhost:8080/h2/</a> y pulsaremos el botón <strong>Connect</strong>. Una vez conectados, si realizamos una <em>query</em> sobre la tabla CUSTOMER_ENTITY veremos la siguiente salida:</p>
+<p><img src='.\consola-h2-query.png' alt='Consultando datos en tabla customer_entity' referrerPolicy='no-referrer' /></p>
+<p>Observar que aunque hemos añadido el valor para el campo &quot;<strong>secret</strong>&quot;  este  no se ha guardado en la base de datos.</p>
+<p>Como no podemos acceder a la tabla  <strong>city_entity</strong> a través de nuestra API pues así lo hemos especificado, Vamos a aprovechar que estamos en la consola y añadir un registro en la tabla, el cual asignaremos al cliente insertado.</p>
+<pre><code class='language-sql' lang='sql'>insert into city_entity values(1,&#39;Logroño&#39;,&#39;La Rioja&#39;);
+update customer_entity set city_id=1;
+</code></pre>
+<p>&nbsp;</p>
+<p><img src='.\consola-h2.png' alt='Consultando datos en tabla customer_entity' referrerPolicy='no-referrer' /></p>
+<p>&nbsp;</p>
+<p>Ahora si realizamos una petición <strong>GET</strong>  obtendríamos la siguiente salida:</p>
+<pre><code> curl -s localhost:8080/api/customer
+{
+  &quot;_embedded&quot; : {
+    &quot;customers&quot; : [ {
+      &quot;name&quot; : &quot;nombre cliente 1&quot;,
+      &quot;address&quot; : &quot;direccion cliente 1&quot;,
+      &quot;telephone&quot; : &quot;telefono cliente 1&quot;,
+      &quot;city&quot; : {
+        &quot;name&quot; : &quot;Logroño&quot;,
+        &quot;province&quot; : &quot;La Rioja&quot;
+      },
+      &quot;_links&quot; : {
+        &quot;self&quot; : {
+          &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+        },
+        &quot;customerEntity&quot; : {
+          &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+        }
+      }
+    } ]
+  },
+  &quot;_links&quot; : {
+    &quot;self&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer&quot;
+    },
+    &quot;profile&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/profile/customer&quot;
+    },
+    &quot;search&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer/search&quot;
+    }
+  }
+}
+</code></pre>
+<p>Observar como HATEOAS muestra los diferentes enlaces disponibles. </p>
+<p>Por ejemplo podríamos consultar directamente el cliente con el código 1 navegando a <a href='http://localhost:8080/api/customer/1' target='_blank' class='url'>http://localhost:8080/api/customer/1</a></p>
+<pre><code>&gt; curl -s localhost:8080/api/customer/1
+{
+  &quot;name&quot; : &quot;nombre cliente 1&quot;,
+  &quot;address&quot; : &quot;direccion cliente 1&quot;,
+  &quot;telephone&quot; : &quot;telefono cliente 1&quot;,
+  &quot;city&quot; : {
+    &quot;name&quot; : &quot;Logroño&quot;,
+    &quot;province&quot; : &quot;La Rioja&quot;
+  },
+  &quot;_links&quot; : {
+    &quot;self&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+    },
+    &quot;customerEntity&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+    }
+  }
+}
+
+</code></pre>
+<p>Como he explicado antes, en el repositorio de <strong>Customer</strong> he definido la función <strong>findByNameIgnoreCaseContaining</strong> . Para realizar una consulta usando esa función navegaremos a </p>
+<p><a href='http://localhost:8080/api/customer/search/findByNameIgnoreCaseContaining' target='_blank' class='url'>http://localhost:8080/api/customer/search/findByNameIgnoreCaseContaining</a>{?name}</p>
+<pre><code>&gt; curl -s http://localhost:8080/api/customer/search/findByNameIgnoreCaseContaining?name=Clien
+{
+  &quot;_embedded&quot; : {
+    &quot;customers&quot; : [ {
+      &quot;name&quot; : &quot;nombre cliente 1&quot;,
+      &quot;address&quot; : &quot;direccion cliente 1&quot;,
+      &quot;telephone&quot; : &quot;telefono cliente 1&quot;,
+      &quot;city&quot; : {
+        &quot;name&quot; : &quot;Logroño&quot;,
+        &quot;province&quot; : &quot;La Rioja&quot;
+      },
+      &quot;_links&quot; : {
+        &quot;self&quot; : {
+          &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+        },
+        &quot;customerEntity&quot; : {
+          &quot;href&quot; : &quot;http://localhost:8080/api/customer/1&quot;
+        }
+      }
+    } ]
+  },
+  &quot;_links&quot; : {
+    &quot;self&quot; : {
+      &quot;href&quot; : &quot;http://localhost:8080/api/customer/search/findByNameIgnoreCaseContaining?name=Clien&quot;
+    }
+  }
+}
+</code></pre>
+<p>Por no hacer más larga la entrada no explicare como actualizar un registro, con peticiones HTTP tipo <strong>PUT</strong>, borrar registros con peticiones HTTP tipo <strong>DELETE</strong> o actualizar parte de un registro con <strong>PATCH</strong>, pues creo que es obvio y lo dejo como ejercicio para el lector.</p>
+<p>Comentar  que lo mostrado en este articulo es solo un esbozo de la potencia de <strong>Spring Data Rest</strong>. </p>
+<p>Estas son algunas de las otras muchas características que implementa:</p>
+<ul>
+<li>Permite añadir eventos de tal manera que cuando se inserte, modifique, borre o incluso consulte un registro ese evento sea disparado y se puedan ejecutar el código deseado, el cual incluso puede modificar o anular la petición realizada. Por supuesto soporta navegación</li>
+<li>Soporta navegación entre los registros consultados.</li>
+<li>Validación de los datos insertados</li>
+<li>Los Links pueden ser totalmente personalizados.</li>
+
+</ul>
+<p>Y esto es todo, esperando que el articulo haya resultado interesante me despido hasta el siguiente. Como siempre se agradecerá cualquier <em>feedback</em>.</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+</body>
+</html>
